@@ -51,21 +51,21 @@ st.write(
     "Upload an image or use your camera to check whether a fruit or vegetable is **Fresh** or **Stale**."
 )
 
-if "camera_photo" not in st.session_state:
-    st.session_state.camera_photo = None
+if "camera_photo_available" not in st.session_state:
+    st.session_state.camera_photo_available = False
 
 source = st.radio("Choose an image source", ["Upload image", "Use camera"], horizontal=True)
 
 if source == "Upload image":
     input_image = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
 else:
-    if st.button("Retake photo", disabled=st.session_state.camera_photo is None):
-        st.session_state.camera_photo = None
+    if st.button("Retake photo", disabled=not st.session_state.camera_photo_available):
+        st.session_state.camera_photo_available = False
         st.rerun()
 
-    input_image = st.camera_input("Take a photo", key="camera_photo")
+    input_image = st.camera_input("Take a photo", key="camera_input")
     if input_image is not None:
-        st.session_state.camera_photo = input_image
+        st.session_state.camera_photo_available = True
 
 if input_image is not None:
     display_image = load_pil_image(input_image)
