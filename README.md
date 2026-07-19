@@ -2,6 +2,8 @@
 
 A Streamlit web application that uses a TensorFlow/Keras model to determine whether a fruit or vegetable is **Fresh** or **Stale**.
 
+You can either upload an image or use your device camera to take a photo directly in the browser.
+
 ## Files
 
 - model.keras

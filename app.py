@@ -6,41 +6,73 @@ from PIL import Image
 st.set_page_config(
     page_title="Freshness Scanner",
     page_icon="🥬",
-    layout="centered"
+    layout="centered",
 )
+
 
 @st.cache_resource
 def load_model():
     return tf.keras.models.load_model("model.keras")
 
-model = load_model()
+
+@st.cache_resource
+def get_model():
+    return load_model()
+
 
 IMG_SIZE = (128, 128)
+
+
+def load_pil_image(image):
+    if isinstance(image, np.ndarray):
+        return Image.fromarray(image).convert("RGB")
+    if isinstance(image, Image.Image):
+        return image.convert("RGB")
+    return Image.open(image).convert("RGB")
+
+
+def preprocess_image(image):
+    img = load_pil_image(image).resize(IMG_SIZE)
+    img_array = np.array(img).astype("float32") / 255.0
+    return img_array
+
+
+def predict_freshness(image):
+    model = get_model()
+    img = preprocess_image(image)
+    img = np.expand_dims(img, axis=0)
+    prediction = float(model.predict(img, verbose=0)[0][0])
+    return prediction
+
 
 st.title("🥬 Fruit & Vegetable Freshness Scanner")
 
 st.write(
-    "Upload an image of a fruit or vegetable to check whether it is **Fresh** or **Stale**."
+    "Upload an image or use your camera to check whether a fruit or vegetable is **Fresh** or **Stale**."
 )
 
-uploaded_file = st.file_uploader(
-    "Choose an image",
-    type=["jpg", "jpeg", "png"]
-)
+if "camera_photo" not in st.session_state:
+    st.session_state.camera_photo = None
 
-if uploaded_file is not None:
+source = st.radio("Choose an image source", ["Upload image", "Use camera"], horizontal=True)
 
-    image = Image.open(uploaded_file).convert("RGB")
+if source == "Upload image":
+    input_image = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
+else:
+    if st.button("Retake photo", disabled=st.session_state.camera_photo is None):
+        st.session_state.camera_photo = None
+        st.rerun()
 
-    st.image(image, caption="Uploaded Image", use_container_width=True)
+    input_image = st.camera_input("Take a photo", key="camera_photo")
+    if input_image is not None:
+        st.session_state.camera_photo = input_image
 
-    img = image.resize(IMG_SIZE)
+if input_image is not None:
+    display_image = load_pil_image(input_image)
+    caption = "Captured Image" if source == "Use camera" else "Uploaded Image"
+    st.image(display_image, caption=caption, use_container_width=True)
 
-    img = np.array(img).astype("float32") / 255.0
-
-    img = np.expand_dims(img, axis=0)
-
-    prediction = float(model.predict(img, verbose=0)[0][0])
+    prediction = predict_freshness(input_image)
 
     if prediction > 0.5:
         label = "🍂 Stale"
@@ -52,5 +84,4 @@ if uploaded_file is not None:
         st.success(label)
 
     st.progress(int(confidence * 100))
-
-    st.write(f"**Confidence:** {confidence*100:.2f}%")
+    st.write(f"**Confidence:** {confidence * 100:.2f}%")
